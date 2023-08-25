@@ -1,0 +1,38 @@
+{
+    "system_config": {
+        "usr_config": false,
+        "cloud": "onenet",
+        "base_function": {
+            "sota": true,
+            "logger": true,
+            "offline_storage": true,
+            "fota": true
+        }
+    },
+    "usr_config": {},
+    "onenet_config": {
+        "product_id": "pKYswKsPeR",
+        "port": 1883,
+        "server": "mqtts.heclouds.com",
+        "device_id": "device1",
+        "access_key": "H2mZK/3XW5Uv/cnN7fEf8TnFG3WTu3V1a6eZpe/1J0s=",
+        "keepalive": 60,
+        "qos": 0,
+        "subscribe": {
+            "1": "$sys/pKYswKsPeR/device1/dp/post/json/rejected",
+            "0": "$sys/pKYswKsPeR/device1/dp/post/json/accepted"
+        },
+        "publish": {
+            "0": "$sys/pKYswKsPeR/device1/dp/post/json"
+        }
+    },
+    "uart_config": {
+        "baudrate": "115200",
+        "port": "2",
+        "flowctl": "0",
+        "parity": "0",
+        "rs485_direction_pin": "1",
+        "databits": "8",
+        "stopbits": "1"
+    }
+}
