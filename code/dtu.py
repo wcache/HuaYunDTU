@@ -35,10 +35,10 @@ class Dtu(Singleton):
         elif protocol.startswith("tcp"):
             cloud_config = settings.current_settings.get("tcp_private_cloud_config")
             cloud = SocketIot(
-                ip_type=cloud_config['ip_type'],
-                keep_alive=cloud_config['keep_alive'],
-                domain=cloud_config['server'],
-                port=cloud_config['port']
+                ip_type=cloud_config.get("ip_type"),
+                keep_alive=cloud_config.get("keep_alive"),
+                domain=cloud_config.get("server"),
+                port=int(cloud_config.get("port")),
             )
             cloud.init(enforce=True)
             return cloud
@@ -56,7 +56,6 @@ class Dtu(Singleton):
         print("DEVICE_FIRMWARE_NAME: %s, DEVICE_FIRMWARE_VERSION: %s" % (DEVICE_FIRMWARE_NAME, DEVICE_FIRMWARE_VERSION))
 
         uart_setting = settings.current_settings["uart_config"]
-        # Serial initialization
         serial = Serial(
             int(uart_setting.get("port")),
             int(uart_setting.get("baudrate")),
@@ -67,44 +66,33 @@ class Dtu(Singleton):
             uart_setting.get("rs485_direction_pin")
         )
 
-        # Cloud initialization
         cloud = self.__cloud_init(settings.current_settings["system_config"]["cloud"])
 
-        # GuiToolsInteraction initialization
         gui_tool_inter = GuiToolsInteraction()
 
-        # UplinkTransaction initialization
         up_transaction = UplinkTransaction()
         up_transaction.add_module(serial)
         up_transaction.add_module(gui_tool_inter)
 
-        # DownlinkTransaction initialization
         down_transaction = DownlinkTransaction()
         down_transaction.add_module(serial)
 
-        # OtaTransaction initialization
         ota_transaction = OtaTransaction()
 
-        # RemoteSubscribe initialization
         remote_sub = RemoteSubscribe()
         remote_sub.add_executor(down_transaction, 1)
         remote_sub.add_executor(ota_transaction, 2)
         cloud.addObserver(remote_sub)
 
-        # RemotePublish initialization
         remote_pub = RemotePublish()
         remote_pub.add_cloud(cloud)
         up_transaction.add_module(remote_pub)
         ota_transaction.add_module(remote_pub)
 
-        # Send module release information to cloud. After receiving this information, 
-        # the cloud server checks whether to upgrade modules
         ota_transaction.ota_check()
-        # Periodically check whether cloud have an upgrade plan
         self.__ota_transaction = ota_transaction
         self.__ota_timer.start(1000 * 600, 1, self.__periodic_ota_check)
 
-        # Start uplink transaction
         try:
             _thread.start_new_thread(up_transaction.uplink_main, ())
         except:

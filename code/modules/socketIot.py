@@ -119,6 +119,7 @@ class SocketIot(CloudObservable):
             else:
                 if data != b"":
                     try:
+                        logger.debug('socket get msg: {}'.format(data))
                         self.notifyObservers("raw_data", {"topic": None, "data": data})
                     except Exception as e:
                         logger.error("{}".format(e))

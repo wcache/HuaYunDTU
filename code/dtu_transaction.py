@@ -262,8 +262,6 @@ class UplinkTransaction(Singleton):
         return False
 
     def uplink_main(self):
-        """Read serial data, parse and upload to the cloud
-        """
         while 1:
             # Read uart data
             read_byte = self.__serial.read(nbytes=1024, timeout=100)
@@ -273,34 +271,6 @@ class UplinkTransaction(Singleton):
                 except Exception as e:
                     usys.print_exception(e)
                     print("Parse uart data error: %s" % e)
-  
-    def report_history(self):
-        """Report history data to cloud
-        Returns:
-            boolen: True: Successfully post
-                    False:Failure to post
-        """
-        if not self.__history:
-            raise TypeError("self.__history is not registered.")
-
-        res = True
-        hist = self.__history.read()
-        print("hist[data]:", hist["data"])
-
-        if hist["data"]:
-            pt_count = 0
-            for i, data in enumerate(hist["data"]):
-                pt_count += 1
-                if not self.__post_history_data(data):
-                    res = False
-                    break
-
-            hist["data"] = hist["data"][pt_count:]
-            if hist["data"]:
-                # Flush data in hist-dictionary to tracker_data.hist file.
-                self.__history.write(hist["data"])
-
-        return res
 
 
 class GuiToolsInteraction(object):
