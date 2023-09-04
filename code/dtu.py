@@ -1,14 +1,14 @@
 import _thread
 import osTimer
+from machine import ExtInt, Pin
+from misc import Power
 from usr.modules.common import Singleton
 from usr.modules.onenetIot import OneNetIot
-
-from usr.settings import settings
+from usr.modules.socketIot import SocketIot
 from usr.modules.serial import Serial
 from usr.dtu_transaction import DownlinkTransaction, OtaTransaction, UplinkTransaction, GuiToolsInteraction
 from usr.modules.remote import RemotePublish, RemoteSubscribe
-from usr.settings import PROJECT_NAME, PROJECT_VERSION, DEVICE_FIRMWARE_NAME, DEVICE_FIRMWARE_VERSION
-
+from usr.settings import settings, PROJECT_NAME, PROJECT_VERSION, DEVICE_FIRMWARE_NAME, DEVICE_FIRMWARE_VERSION
 
 
 class Dtu(Singleton):
@@ -32,6 +32,16 @@ class Dtu(Singleton):
             )
             cloud.init(enforce=True)
             return cloud
+        elif protocol.startswith("tcp"):
+            cloud_config = settings.current_settings.get("tcp_private_cloud_config")
+            cloud = SocketIot(
+                ip_type=cloud_config['ip_type'],
+                keep_alive=cloud_config['keep_alive'],
+                domain=cloud_config['server'],
+                port=cloud_config['port']
+            )
+            cloud.init(enforce=True)
+            return cloud
         else:
             raise TypeError('protocol \"{}\" not supported!'.format(protocol))
 
@@ -43,8 +53,7 @@ class Dtu(Singleton):
         """Dtu init flow
         """
         print("PROJECT_NAME: %s, PROJECT_VERSION: %s" % (PROJECT_NAME, PROJECT_VERSION))
-        print(
-            "DEVICE_FIRMWARE_NAME: %s, DEVICE_FIRMWARE_VERSION: %s" % (DEVICE_FIRMWARE_NAME, DEVICE_FIRMWARE_VERSION))
+        print("DEVICE_FIRMWARE_NAME: %s, DEVICE_FIRMWARE_VERSION: %s" % (DEVICE_FIRMWARE_NAME, DEVICE_FIRMWARE_VERSION))
 
         uart_setting = settings.current_settings["uart_config"]
         # Serial initialization
@@ -102,17 +111,43 @@ class Dtu(Singleton):
             raise self.Error(self.error_map[self.ErrCode.ESYS])
 
 
-def FeedDog(args):
-    from machine import Pin
-    dog_pin = Pin(Pin.GPIO12, Pin.OUT, Pin.PULL_DISABLE, 1)
-    if dog_pin.read():
-        dog_pin.write(0)
-    else:
-        dog_pin.write(1)
+class Manager(object):
+
+    def __init__(
+            self,
+            dog_gpio=Pin.GPIO12,
+            reload_gpio=ExtInt.GPIO29
+    ):
+        self.dog_pin = Pin(dog_gpio, Pin.OUT, Pin.PULL_DISABLE, 1)
+        self.dog_feed_timer = osTimer()
+
+        self.reload_pin = ExtInt(reload_gpio, ExtInt.IRQ_RISING_FALLING, ExtInt.PULL_PU, self.reload_callback)
+        self.reload_timer = osTimer()
+        self.dtu = Dtu()
+
+    def start(self):
+        self.dog_feed_timer.start(3000, 1, self.__feed)
+        self.reload_pin.enable()
+        self.dtu.start()
+
+    def __feed(self, args):
+        if self.dog_pin.read():
+            self.dog_pin.write(0)
+        else:
+            self.dog_pin.write(1)
+
+    def reload_callback(self, args):
+        if args[1]:
+            self.reload_timer.start(3000, 0, self.reset)
+        else:
+            self.reload_timer.stop()
+
+    @staticmethod
+    def reset(args):
+        settings.reset()
+        Power.powerRestart()
 
 
 if __name__ == "__main__":
-    feed_dog_timer = osTimer()
-    feed_dog_timer.start(3000, 1, FeedDog)
-    dtu = Dtu()
-    dtu.start()
+    manager = Manager()
+    manager.start()

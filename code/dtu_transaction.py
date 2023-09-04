@@ -113,9 +113,9 @@ class OtaTransaction(Singleton):
                 if args[0][0] == "ota_cfg":
                     module = args[0][1].get("componentNo")
                     target_version = args[0][1].get("targetVersion")
-                    if module == DEVICE_FIRMWARE_NAME and current_settings["system_config"]["base_function"]["fota"] == True:
+                    if module == DEVICE_FIRMWARE_NAME and current_settings["system_config"]["base_function"]["fota"] is True:
                         source_version = DEVICE_FIRMWARE_VERSION
-                    elif module == PROJECT_NAME and current_settings["system_config"]["base_function"]["sota"] == True:
+                    elif module == PROJECT_NAME and current_settings["system_config"]["base_function"]["sota"] is True:
                         source_version = PROJECT_VERSION
                     else:
                         return
@@ -354,15 +354,6 @@ class GuiToolsInteraction(object):
     def __set_sota(self, code, data):
         try:
             settings.set("sota", data["sota"])
-            settings.save()
-            return {"code": code, "status": 1}
-        except Exception as e:
-            print("e = {}".format(e))
-            return {"code": code, "status": 0}
-
-    def __set_history_data(self, code, data):
-        try:
-            settings.set("offline_storage", data["offline_storage"])
             settings.save()
             return {"code": code, "status": 1}
         except Exception as e:
